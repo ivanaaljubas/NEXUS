@@ -1,33 +1,28 @@
-NEXUS – Security Monitoring Platform
+# NEXUS – Security Monitoring Platform
+<img width="1918" height="897" alt="image" src="https://github.com/user-attachments/assets/eb41deb0-aaf8-4d52-99b9-3d1133d0064a" />
+
 
 NEXUS is a security monitoring application designed to manage, store, and monitor security events in computer systems.
 
-Features
+## Features
 
-Security event management
+- Security event management
+- REST API for processing and retrieving data
+- PostgreSQL database integration
+- API testing and documentation using Swagger
 
-REST API for processing and retrieving data
+## Technologies
 
-PostgreSQL database integration
+- **Backend:** C#, .NET
+- **Database:** PostgreSQL
+- **API Documentation:** Swagger
+- **Development Environment:** Visual Studio Code
 
-API testing and documentation using Swagger
-
-Technologies
-
-Backend: C#, .NET
-
-Database: PostgreSQL
-
-API Documentation: Swagger
-
-Development Environment: Visual Studio Code
-
-Project Status
+## Project Status
 
 Currently in development.
 
-Purpose
+## Purpose
 
 The purpose of this project is to explore backend development, database management, REST API design, and security event monitoring.
 
-<img width="1918" height="897" alt="image" src="https://github.com/user-attachments/assets/6b8ea184-f6db-4d5a-ad7f-a7b1460fcbf5" />
