@@ -272,29 +272,41 @@ useEffect(() => {
 
   // Jednostavna projektna procjena rizika:
   // bodovi se računaju na temelju ozbiljnosti otvorenih alerta.
-  const threatScore = Math.min(
-    100,
-    activeAlerts.reduce((total, alert) => {
-      const weights: Record<string, number> = {
-        critical: 30,
-        high: 20,
-        medium: 10,
-        low: 5,
-      };
+  
+  // Bodovi prema ozbiljnosti pojedinog otvorenog alerta.
+  const threatWeights: Record<string, number> = {
+    low: 25,
+    medium: 50,
+    high: 70,
+    critical: 100,
+  };
 
-      return (
-        total +
-        (weights[alert.severity?.toLowerCase() ?? ""] ?? 0)
-      );
-    }, 0)
-  );
+  // Računamo prosječnu ozbiljnost otvorenih alerta.
+  const averageThreatScore =
+    activeAlerts.length === 0
+      ? 0
+      : Math.round(
+          activeAlerts.reduce(
+            (total, alert) =>
+              total +
+              (threatWeights[alert.severity?.toLowerCase()] ?? 0),
+            0
+          ) / activeAlerts.length
+        );
+
+  // Barem jedan otvoreni Critical alert podiže
+  // ukupnu procjenu na najmanje 85 bodova.
+  const threatScore =
+    criticalAlerts.length > 0
+      ? Math.max(85, averageThreatScore)
+      : averageThreatScore;
 
   const threatLevel =
-    threatScore >= 75
+    threatScore >= 80
       ? "Critical"
-      : threatScore >= 50
+      : threatScore >= 60
         ? "High"
-        : threatScore >= 25
+        : threatScore >= 35
           ? "Medium"
           : "Low";
 
