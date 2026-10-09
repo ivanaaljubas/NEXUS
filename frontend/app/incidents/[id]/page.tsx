@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";  
 
 type Alert = {
   id: number;
@@ -38,10 +38,19 @@ type Incident = {
   description?: string;
 };
 
+type IncidentNote = {
+  id: number;
+  incidentId: number;
+  content: string;
+  createdAt: string;
+  author: string;
+};
+
 type IncidentDetails = {
   incident: Incident;
   alerts: Alert[];
   events: SecurityEvent[];
+  notes: IncidentNote[];
 };
 
 export default function IncidentDetailsPage() {
@@ -51,7 +60,13 @@ export default function IncidentDetailsPage() {
   const [data, setData] = useState<IncidentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [noteContent, setNoteContent] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteMessage, setNoteMessage] = useState("");
 
+  const [selectedStatus, setSelectedStatus] = useState("Open");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   useEffect(() => {
     const loadIncident = async () => {
       try {
@@ -65,6 +80,7 @@ export default function IncidentDetailsPage() {
 
         const result = await response.json();
         setData(result);
+        setSelectedStatus(result.incident.status);
       } catch {
         setError("Greška pri dohvaćanju incidenta.");
       } finally {
@@ -74,6 +90,129 @@ export default function IncidentDetailsPage() {
 
     loadIncident();
   }, [id]);
+
+  
+async function handleSaveNote(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  const content = noteContent.trim();
+
+  if (!content) {
+    setNoteMessage("Prvo upiši tekst bilješke.");
+    return;
+  }
+
+  setSavingNote(true);
+  setNoteMessage("");
+
+  try {
+    const response = await fetch(
+      `http://localhost:5186/api/incidents/${id}/notes`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          author: "Analyst",
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+
+      throw new Error(
+        errorBody?.message ?? "Bilješku nije moguće spremiti."
+      );
+    }
+
+    setNoteContent("");
+
+    // Ponovno učitavamo incident kako bismo prikazali novu bilješku.
+    const refreshResponse = await fetch(
+      `http://localhost:5186/api/incidents/${id}`
+    );
+
+    if (refreshResponse.ok) {
+      const refreshedData: IncidentDetails =
+        await refreshResponse.json();
+
+      setData(refreshedData);
+      setNoteMessage("Bilješka je uspješno spremljena.");
+    } else {
+      setNoteMessage(
+        "Bilješka je spremljena, ali prikaz nije osvježen. Ponovno učitaj stranicu."
+      );
+    }
+  } catch (err) {
+    setNoteMessage(
+      err instanceof Error
+        ? err.message
+        : "Došlo je do greške pri spremanju bilješke."
+    );
+  } finally {
+    setSavingNote(false);
+  }
+}
+
+async function handleStatusUpdate(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+
+  setUpdatingStatus(true);
+  setStatusMessage("");
+
+  try {
+    const response = await fetch(
+      `http://localhost:5186/api/incidents/${id}/status`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: selectedStatus,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+
+      throw new Error(
+        errorBody?.message ?? "Status nije moguće promijeniti."
+      );
+    }
+
+    const result = await response.json();
+    const newStatus = result.status ?? selectedStatus;
+
+    setSelectedStatus(newStatus);
+
+    setData((current) =>
+      current
+        ? {
+            ...current,
+            incident: {
+              ...current.incident,
+              status: newStatus,
+            },
+          }
+        : current
+    );
+
+    setStatusMessage(`Status je promijenjen u: ${newStatus}.`);
+  } catch (err) {
+    setStatusMessage(
+      err instanceof Error
+        ? err.message
+        : "Došlo je do greške pri promjeni statusa."
+    );
+  } finally {
+    setUpdatingStatus(false);
+  }
+}
 
   if (loading) {
     return (
@@ -95,7 +234,7 @@ export default function IncidentDetailsPage() {
     );
   }
 
-  const { incident, alerts, events } = data;
+  const { incident, alerts, events, notes } = data;
 
   return (
     <main className="min-h-screen bg-[#080b0d] p-8 text-white">
@@ -171,6 +310,127 @@ export default function IncidentDetailsPage() {
             </p>
           </div>
         </div>
+        
+        {/* Incident management */}
+        <section className="mt-8 grid gap-6 xl:grid-cols-2">
+          {/* Status */}
+          <div className="rounded-xl border border-white/10 bg-[#0d1317] p-6">
+            <h2 className="text-xl font-semibold">Manage Incident</h2>
+
+            <p className="mt-1 text-sm text-zinc-500">
+              Promijeni status ovog incidenta.
+            </p>
+
+            <form onSubmit={handleStatusUpdate} className="mt-5 space-y-4">
+              <label
+                htmlFor="incident-status"
+                className="block text-sm text-zinc-400"
+              >
+                Incident status
+              </label>
+
+              <select
+                id="incident-status"
+                value={selectedStatus}
+                onChange={(event) => setSelectedStatus(event.target.value)}
+                disabled={updatingStatus}
+                className="w-full rounded-lg border border-white/10 bg-[#080b0d] px-4 py-3 text-white outline-none focus:border-emerald-500/50"
+              >
+                <option value="Open">Open</option>
+                <option value="Investigating">Investigating</option>
+                <option value="Resolved">Resolved</option>
+                <option value="Closed">Closed</option>
+              </select>
+
+              <button
+                type="submit"
+                disabled={updatingStatus}
+                className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400 disabled:opacity-50"
+              >
+                {updatingStatus ? "Saving..." : "Save status"}
+              </button>
+
+              {statusMessage && (
+                <p className="text-sm text-zinc-400" role="status">
+                  {statusMessage}
+                </p>
+              )}
+            </form>
+          </div>
+
+          {/* Analyst notes */}
+          <div className="rounded-xl border border-white/10 bg-[#0d1317] p-6">
+            <h2 className="text-xl font-semibold">Analyst Notes</h2>
+
+            <p className="mt-1 text-sm text-zinc-500">
+              Zapiši zapažanja i korake tijekom istrage.
+            </p>
+
+            <form onSubmit={handleSaveNote} className="mt-5 space-y-4">
+              <label
+                htmlFor="incident-note"
+                className="block text-sm text-zinc-400"
+              >
+                New note
+              </label>
+
+              <textarea
+                id="incident-note"
+                value={noteContent}
+                onChange={(event) => setNoteContent(event.target.value)}
+                maxLength={4000}
+                rows={4}
+                placeholder="Opiši što si provjerila i što treba napraviti..."
+                disabled={savingNote}
+                className="w-full resize-y rounded-lg border border-white/10 bg-[#080b0d] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/50"
+              />
+
+              <button
+                type="submit"
+                disabled={savingNote || !noteContent.trim()}
+                className="rounded-lg bg-emerald-500 px-4 py-3 text-sm font-semibold text-black transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingNote ? "Saving..." : "Add note"}
+              </button>
+
+              {noteMessage && (
+                <p className="text-sm text-zinc-400" role="status">
+                  {noteMessage}
+                </p>
+              )}
+            </form>
+
+            <div className="mt-6 space-y-3 border-t border-white/10 pt-5">
+              <h3 className="text-sm font-semibold text-zinc-300">
+                Previous notes ({notes.length})
+              </h3>
+
+              {notes.length === 0 ? (
+                <p className="text-sm text-zinc-500">
+                  Još nema bilješki za ovaj incident.
+                </p>
+              ) : (
+                notes.map((note) => (
+                  <article
+                    key={note.id}
+                    className="rounded-lg border border-white/5 bg-black/20 p-4"
+                  >
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
+                      {note.content}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs text-zinc-600">
+                      <span>{note.author}</span>
+                      <span>
+                        {new Date(note.createdAt).toLocaleString("hr-HR")}
+                      </span>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
 
         {/* Related Alerts */}
         <section className="mt-8">

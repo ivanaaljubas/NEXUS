@@ -13,4 +13,5 @@ public class NexusDbContext : DbContext
     public DbSet<Event> Events { get; set; }
     public DbSet<Alert> Alerts { get; set; }
     public DbSet<Incident> Incidents { get; set; }
+    public DbSet<IncidentNote> IncidentNotes { get; set; }
 }
