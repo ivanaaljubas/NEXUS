@@ -17,21 +17,23 @@ public class IncidentCorrelationService
     {
         var since = DateTime.UtcNow.AddMinutes(-10);
 
-        // Tražimo druge otvorene alerte iz zadnjih 10 minuta
-        // koji imaju isti IP ili istog korisnika.
-        var relatedAlerts = await _context.Alerts
-            .Where(a =>
-                a.Id != alert.Id &&
-                a.Status == "Open" &&
-                a.DetectedAt >= since &&
-                (
-                    (!string.IsNullOrEmpty(alert.SourceIp) &&
-                     a.SourceIp == alert.SourceIp)
-                    ||
-                    (!string.IsNullOrEmpty(alert.Username) &&
-                     a.Username == alert.Username)
-                ))
-            .ToListAsync();
+// Za korelaciju moramo imati IP adresu.
+var sourceIp = alert.SourceIp;
+
+if (string.IsNullOrWhiteSpace(sourceIp))
+{
+    return null;
+}
+
+// Tražimo otvorene alerte s iste IP adrese
+// koji su detektirani u posljednjih 10 minuta.
+var relatedAlerts = await _context.Alerts
+    .Where(a =>
+        a.Id != alert.Id &&
+        a.Status == "Open" &&
+        a.DetectedAt >= since &&
+        a.SourceIp == sourceIp)
+    .ToListAsync();
 
         // Ako nema drugog povezanog alerta,
         // još nemamo dovoljno podataka za incident.

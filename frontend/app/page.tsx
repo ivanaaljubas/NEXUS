@@ -388,13 +388,12 @@ useEffect(() => {
               Attack Simulator
             </Link>
 
-            <div
-              title="Ovu stranicu ćemo napraviti kasnije."
-              className="flex cursor-not-allowed items-center rounded-lg px-4 py-3 text-sm text-zinc-600"
-            >
-              Detection Rules
-              <span className="ml-auto text-xs">Soon</span>
-            </div>
+          <Link
+            href="/detection-rules"
+            className="flex items-center rounded-lg px-4 py-3 text-sm text-zinc-400 transition hover:bg-white/5 hover:text-white"
+          >
+            Detection Rules
+          </Link>
           </nav>
 
           {/* System status */}
